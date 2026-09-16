@@ -1,0 +1,20 @@
+{
+  "name": "fukuwake-kakeibo",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "袋分け家計簿 - 個人用の袋分け式家計簿PWA",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0",
+    "@vitejs/plugin-react": "^4.3.0"
+  }
+}
