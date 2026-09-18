@@ -1733,7 +1733,9 @@ const s = {
     boxShadow: "0 0 40px rgba(0,0,0,0.06)",
   },
   header: {
-    display: "flex", alignItems: "center", padding: "14px 8px", borderBottom: "1px solid #F0EEE7",
+    display: "flex", alignItems: "center",
+    padding: "calc(env(safe-area-inset-top) + 14px) 8px 14px",
+    borderBottom: "1px solid #F0EEE7",
     background: "#FBFAF7", position: "sticky", top: 0, zIndex: 5,
   },
   headerSide: { width: 64, display: "flex", alignItems: "center" },
@@ -1844,14 +1846,14 @@ const s = {
   },
   groupBody: { padding: "0 2px" },
   compactRow: {
-    display: "grid", gridTemplateColumns: "minmax(0,1fr) 66px minmax(0,84px)", columnGap: 8,
+    display: "grid", gridTemplateColumns: "36fr 26fr 38fr", columnGap: 6,
     alignItems: "center", padding: "6px 8px", borderBottom: "1px solid #F2F0E9", cursor: "pointer",
   },
   compactLeft: { fontSize: 13, fontWeight: 600, color: "#3A3A3A", minWidth: 0 },
   compactTruncate: { display: "block", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" },
   compactLeftInner: { display: "flex", alignItems: "center", gap: 4, minWidth: 0, overflow: "hidden" },
-  compactAmount: { textAlign: "right", fontWeight: 700, fontSize: 13.5, fontVariantNumeric: "tabular-nums" },
-  compactSub: { fontSize: 11.5, color: "#9A9A9A", paddingLeft: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", textAlign: "left" },
+  compactAmount: { textAlign: "right", fontWeight: 700, fontSize: 13.5, fontVariantNumeric: "tabular-nums", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  compactSub: { fontSize: 11.5, color: "#9A9A9A", paddingLeft: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", textAlign: "left", minWidth: 0 },
   transferBadgeSmall: { fontSize: 9, fontWeight: 700, color: "#8A6FD1", background: "#EEE9FA", borderRadius: 5, padding: "1px 5px", flexShrink: 0 },
   deleteWideBtn: { width: "100%", border: "1px solid #F0C9C6", background: "#FBEAE9", color: "#D9463F", borderRadius: 12, padding: "12px 0", fontSize: 13.5, fontWeight: 700, cursor: "pointer" },
 
