@@ -110,12 +110,12 @@ function buildSampleState() {
   const dateInMonth = (day) => `${y}-${pad2(m + 1)}-${pad2(Math.min(day, 28))}`;
 
   const pockets = [
-    { id: "p_free", walletId, name: "自由費", icon: "💄", color: "#F4A6A6", basicBudget: 30000, order: 0, enabledDefault: true, carryOver: false },
-    { id: "p_transit", walletId, name: "交通費", icon: "🚃", color: "#7C83FD", basicBudget: 5000, order: 1, enabledDefault: true, carryOver: false },
-    { id: "p_nail", walletId, name: "ネイル", icon: "💅", color: "#F5B49A", basicBudget: 26000, order: 2, enabledDefault: true, carryOver: true },
-    { id: "p_food", walletId, name: "仕事食費", icon: "🍽️", color: "#C7E28E", basicBudget: 13000, order: 3, enabledDefault: false, carryOver: false },
-    { id: "p_cloth", walletId, name: "被服費", icon: "👗", color: "#B7A6F4", basicBudget: 5000, order: 4, enabledDefault: false, carryOver: false },
-    { id: OTHER_POCKET_ID, walletId, name: "その他", icon: "🧾", color: "#C9C9C9", basicBudget: 0, order: 99, enabledDefault: true, carryOver: false, locked: true },
+    { id: "p_free", walletId, name: "自由費", icon: "💄", color: "#F4A6A6", basicBudget: 30000, order: 0, enabledDefault: true, carryOver: false, includeInOverall: true },
+    { id: "p_transit", walletId, name: "交通費", icon: "🚃", color: "#7C83FD", basicBudget: 5000, order: 1, enabledDefault: true, carryOver: false, includeInOverall: true },
+    { id: "p_nail", walletId, name: "ネイル", icon: "💅", color: "#F5B49A", basicBudget: 26000, order: 2, enabledDefault: true, carryOver: true, includeInOverall: true },
+    { id: "p_food", walletId, name: "仕事食費", icon: "🍽️", color: "#C7E28E", basicBudget: 13000, order: 3, enabledDefault: false, carryOver: false, includeInOverall: true },
+    { id: "p_cloth", walletId, name: "被服費", icon: "👗", color: "#B7A6F4", basicBudget: 5000, order: 4, enabledDefault: false, carryOver: false, includeInOverall: true },
+    { id: OTHER_POCKET_ID, walletId, name: "その他", icon: "🧾", color: "#C9C9C9", basicBudget: 0, order: 99, enabledDefault: true, carryOver: false, includeInOverall: true, locked: true },
   ];
 
   const txs = [
@@ -279,13 +279,18 @@ function pocketStats(state, walletId, period, pocket, memo) {
   };
 }
 
+// 「表示ON/OFF」とは別軸の設定。未設定（既存データ・旧バックアップ）は安全側でON扱いにする。
+function isIncludedInOverall(pocket) {
+  return pocket.includeInOverall !== false;
+}
+
 function overallStats(state, walletId, period) {
   const memo = {};
   const pockets = pocketsForWallet(state, walletId);
   let budget = 0, expense = 0;
   const list = pockets.map((p) => {
     const st = pocketStats(state, walletId, period, p, memo);
-    if (st.enabled) { budget += st.monthBudget; expense += st.expense; }
+    if (isIncludedInOverall(p)) { budget += st.monthBudget; expense += st.expense; }
     return st;
   });
   return { budget, expense, remaining: budget - expense, list };
@@ -1307,7 +1312,7 @@ function StandardSettingsScreen({ state, update, walletId, nav }) {
     const newP = {
       id: uid("p"), walletId, name: "新しい袋", icon: "🎁",
       color: COLOR_PALETTE[editable.length % COLOR_PALETTE.length],
-      basicBudget: 0, order: maxOrder + 1, enabledDefault: true, carryOver: false,
+      basicBudget: 0, order: maxOrder + 1, enabledDefault: true, carryOver: false, includeInOverall: true,
     };
     update((prev) => ({ pockets: [...prev.pockets, newP] }));
   }
@@ -1336,16 +1341,16 @@ function StandardSettingsScreen({ state, update, walletId, nav }) {
     setDeleteTarget(null);
   }
 
-  const total = editable.filter((p) => p.enabledDefault).reduce((s2, p) => s2 + p.basicBudget, 0);
+  const total = editable.filter((p) => p.includeInOverall !== false).reduce((s2, p) => s2 + p.basicBudget, 0);
 
   return (
     <div style={s.screen}>
       <Header title="袋分け標準設定" onBack={nav.back} />
       <div style={s.scroll}>
-        <div style={s.helpText}>ここでの変更は翌月以降に反映されます。過去の月の基本予算は変わりません。</div>
+        <div style={s.helpText}>ここでの変更は翌月以降に反映されます。過去の月の基本予算は変わりません。{"\n"}「全体集計」をOFFにすると、その袋の予算・使用額はホーム上部の「全体」には含まれなくなります（ホームへの表示・袋自体の残額計算・履歴・カレンダーへの記録は通常どおり行われます）。</div>
 
         <div style={s.settingsOverallRow}>
-          <span>全体（表示ONの袋の合計）</span>
+          <span>全体（全体集計ONの袋の合計）</span>
           <span style={{ fontWeight: 800 }}>{yenPlain(total)}円</span>
         </div>
 
@@ -1385,6 +1390,10 @@ function StandardSettingsScreen({ state, update, walletId, nav }) {
               <label style={s.carryLabel}>
                 <Toggle checked={p.carryOver} onChange={() => patchPocket(p.id, { carryOver: !p.carryOver })} />
                 <span style={{ marginLeft: 8 }}>自動繰越</span>
+              </label>
+              <label style={s.includeLabel}>
+                <Toggle checked={p.includeInOverall !== false} onChange={() => patchPocket(p.id, { includeInOverall: !(p.includeInOverall !== false) })} />
+                <span style={{ marginLeft: 8 }}>全体集計</span>
               </label>
               <button style={s.deleteLink} onClick={() => setDeleteTarget(p)}>削除</button>
             </div>
@@ -1464,8 +1473,8 @@ function SettingsScreen({ state, update, walletId, nav }) {
     const newId = uid("w");
     update((prev) => ({
       wallets: [...prev.wallets, { id: newId, name, closingDay: 31 }],
-      pockets: [...prev.pockets, { id: uid("p"), walletId: newId, name: "自由費", icon: "💰", color: COLOR_PALETTE[0], basicBudget: 10000, order: 0, enabledDefault: true, carryOver: false },
-        { id: uid("p"), walletId: newId, name: "その他", icon: "🧾", color: "#C9C9C9", basicBudget: 0, order: 99, enabledDefault: true, carryOver: false, locked: true }],
+      pockets: [...prev.pockets, { id: uid("p"), walletId: newId, name: "自由費", icon: "💰", color: COLOR_PALETTE[0], basicBudget: 10000, order: 0, enabledDefault: true, carryOver: false, includeInOverall: true },
+        { id: uid("p"), walletId: newId, name: "その他", icon: "🧾", color: "#C9C9C9", basicBudget: 0, order: 99, enabledDefault: true, carryOver: false, includeInOverall: true, locked: true }],
     }));
     setNewWalletName("");
   }
@@ -1899,6 +1908,7 @@ const s = {
   standardRowBottom: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", paddingLeft: 52 },
   standardBudgetLabel: { fontSize: 11.5, color: "#9A9A9A" },
   carryLabel: { display: "flex", alignItems: "center", fontSize: 11.5, color: "#7A7A7A", marginLeft: "auto" },
+  includeLabel: { display: "flex", alignItems: "center", fontSize: 11.5, color: "#7A7A7A" },
   deleteLink: { border: "none", background: "none", color: "#D9463F", fontSize: 11.5, cursor: "pointer", padding: 0 },
 
   addBtn: { border: "none", background: "#EAF3EE", color: "#3D8F5F", borderRadius: 10, padding: "6px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" },
