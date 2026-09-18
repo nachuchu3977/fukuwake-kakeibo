@@ -176,7 +176,6 @@ function pocketsForWallet(state, walletId) {
 function isPocketEnabled(state, walletId, period, pocketId) {
   const pocket = state.pockets.find((p) => p.id === pocketId);
   if (!pocket) return false;
-  if (pocket.locked) return true;
   const override = state.monthlyEnabled?.[walletId]?.[period]?.[pocketId];
   if (override !== undefined) return override;
   return pocket.enabledDefault;
@@ -1296,7 +1295,7 @@ function Toggle({ checked, onChange }) {
 
 function StandardSettingsScreen({ state, update, walletId, nav }) {
   const pockets = pocketsForWallet(state, walletId);
-  const editable = pockets.filter((p) => !p.locked);
+  const editable = pockets; // ホームに存在するすべての袋（「その他」を含む）を一覧に表示する
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   function patchPocket(id, patch) {
