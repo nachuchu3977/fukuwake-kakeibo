@@ -181,9 +181,25 @@ function isPocketEnabled(state, walletId, period, pocketId) {
   return pocket.enabledDefault;
 }
 
+// 袋の「基本予算」は pocket.basicBudget という単一の値ではなく、
+// pocket.basicBudgetHistory（{fromPeriod, amount} の配列）で期間ごとに解決する。
+// 履歴が無い（＝まだ一度も標準設定で変更されていない古いデータ／新規袋）場合は
+// pocket.basicBudget をそのまま使う（後方互換）。
+function basicBudgetForPeriod(state, walletId, period, pocket) {
+  const history = pocket.basicBudgetHistory;
+  if (!history || history.length === 0) return pocket.basicBudget;
+  let best = null;
+  for (const entry of history) {
+    if (entry.fromPeriod <= period && (best === null || entry.fromPeriod > best.fromPeriod)) {
+      best = entry;
+    }
+  }
+  return best ? best.amount : pocket.basicBudget;
+}
+
 function baselineBudget(state, walletId, period, pocket) {
   const adjust = state.monthlyAdjust?.[walletId]?.[period]?.[pocket.id] || 0;
-  return pocket.basicBudget + adjust;
+  return basicBudgetForPeriod(state, walletId, period, pocket) + adjust;
 }
 
 function expenseSum(state, walletId, period, pocketId) {
@@ -265,7 +281,7 @@ function pocketStats(state, walletId, period, pocket, memo) {
   const carry = pocket.carryOver ? monthBudget - base - incomeSum(state, walletId, period, pocket.id) - transferInSum(state, walletId, period, pocket.id) + transferOutSum(state, walletId, period, pocket.id) : 0;
   return {
     pocket,
-    basicBudget: pocket.basicBudget,
+    basicBudget: basicBudgetForPeriod(state, walletId, period, pocket),
     baseline: base,
     monthBudget,
     expense,
@@ -1211,7 +1227,7 @@ function MonthlySettingsScreen({ state, update, walletId, period, closingDay, na
       const cur = { ...(prev.monthlyAdjust || {}) };
       cur[walletId] = { ...(cur[walletId] || {}) };
       cur[walletId][period] = { ...(cur[walletId][period] || {}) };
-      cur[walletId][period][pocket.id] = n - pocket.basicBudget;
+      cur[walletId][period][pocket.id] = n - basicBudgetForPeriod(state, walletId, period, pocket);
       return { monthlyAdjust: cur };
     });
   }
@@ -1307,6 +1323,30 @@ function StandardSettingsScreen({ state, update, walletId, nav }) {
     update((prev) => ({ pockets: prev.pockets.map((p) => p.id === id ? { ...p, ...patch } : p) }));
   }
 
+  // 「基本予算」の変更は、現在すでに始まっている家計簿期間・過去の期間には遡って適用しない。
+  // 今の期間までの値を履歴として固定し、次の期間から新しい基本予算が有効になるようにする。
+  const EARLY_SENTINEL = "0000-01";
+  function changeBasicBudget(pocket, newValue) {
+    const closingDay = getWallet(state, walletId).closingDay;
+    const nowPeriod = currentPeriodKey(closingDay);
+    const nextPeriod = shiftPeriodKey(nowPeriod, 1);
+    update((prev) => ({
+      pockets: prev.pockets.map((p) => {
+        if (p.id !== pocket.id) return p;
+        let history = p.basicBudgetHistory ? [...p.basicBudgetHistory] : [];
+        if (history.length === 0) {
+          // 初めての変更：これまでの基本予算を「今の期間まで」の値として固定する
+          history.push({ fromPeriod: EARLY_SENTINEL, amount: p.basicBudget });
+        }
+        // 次の期間以降に予定されていた変更（まだ有効になっていないもの）だけを今回の変更で上書きする
+        history = history.filter((e) => e.fromPeriod < nextPeriod);
+        history.push({ fromPeriod: nextPeriod, amount: newValue });
+        history.sort((a, b) => (a.fromPeriod < b.fromPeriod ? -1 : 1));
+        return { ...p, basicBudget: newValue, basicBudgetHistory: history };
+      }),
+    }));
+  }
+
   function addPocket() {
     const maxOrder = Math.max(0, ...editable.map((p) => p.order));
     const newP = {
@@ -1383,7 +1423,7 @@ function StandardSettingsScreen({ state, update, walletId, nav }) {
                   type="text"
                   inputMode="numeric"
                   value={p.basicBudget.toLocaleString("ja-JP")}
-                  onChange={(e) => patchPocket(p.id, { basicBudget: Number(e.target.value.replace(/[^\d]/g, "")) || 0 })}
+                  onChange={(e) => changeBasicBudget(p, Number(e.target.value.replace(/[^\d]/g, "")) || 0)}
                   style={s.amountInputSmall}
                 />
               </div>
